@@ -61,6 +61,23 @@ func postCalculators(c echo.Context) error {
 
 }
 
+// func pathCalculators(c echo.Context) error {
+
+// }
+
+func deleteCalculators(c echo.Context) error {
+	id := c.Param("id")
+
+	for i, calc := range calculations {
+		if calc.ID == id {
+			calculations = append(calculations[:i], calculations[i+1:]...)
+			return c.NoContent(http.StatusNoContent)
+		}
+	}
+
+	return c.JSON(http.StatusBadRequest, "Calculation not found")
+}
+
 func main() {
 	e := echo.New()
 
@@ -69,6 +86,7 @@ func main() {
 
 	e.GET("/calculations", getCalculators)
 	e.POST("/calculations", postCalculators)
+	e.DELETE("/calculations/:id", deleteCalculators)
 
 	e.Start("localhost:8080")
 }

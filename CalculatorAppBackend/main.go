@@ -61,9 +61,48 @@ func postCalculators(c echo.Context) error {
 
 }
 
-// func pathCalculators(c echo.Context) error {
+func updateCalculators(c echo.Context) error {
+	id := c.Param("id")
+	if id == "" {
+		return c.JSON(http.StatusBadRequest, map[string]string{
+			"error": "ID is required",
+		})
+	}
 
-// }
+	var req CalculationRequest
+	if err := c.Bind(&req); err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]string{
+			"error":   "Invalid request format",
+			"details": err.Error(),
+		})
+	}
+
+	if req.Expression == "" {
+		return c.JSON(http.StatusBadRequest, map[string]string{
+			"error": "Expression is required",
+		})
+	}
+
+	result, err := calculaExpression(req.Expression)
+	if err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]string{
+			"error":   "Invalid expression",
+			"details": err.Error(),
+		})
+	}
+
+	for i, calc := range calculations {
+		if calc.ID == id {
+			calculations[i].Expression = req.Expression
+			calculations[i].Result = result
+			return c.JSON(http.StatusOK, calculations[i])
+		}
+	}
+
+	return c.JSON(http.StatusNotFound, map[string]string{
+		"error": "Calculation not found",
+	})
+}
 
 func deleteCalculators(c echo.Context) error {
 	id := c.Param("id")
@@ -86,6 +125,7 @@ func main() {
 
 	e.GET("/calculations", getCalculators)
 	e.POST("/calculations", postCalculators)
+	e.PATCH("/calculations/:id", updateCalculators)
 	e.DELETE("/calculations/:id", deleteCalculators)
 
 	e.Start("localhost:8080")

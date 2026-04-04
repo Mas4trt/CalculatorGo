@@ -78,7 +78,9 @@ func postCalculators(c echo.Context) error {
 		Expression: req.Expression,
 		Result:     result,
 	}
-	calculations = append(calculations, calc)
+	if err := db.Create(&calc).Error; err != nil {
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Could not add calculations"})
+	}
 
 	return c.JSON(http.StatusCreated, calc)
 
@@ -114,33 +116,37 @@ func updateCalculators(c echo.Context) error {
 		})
 	}
 
-	for i, calc := range calculations {
-		if calc.ID == id {
-			calculations[i].Expression = req.Expression
-			calculations[i].Result = result
-			return c.JSON(http.StatusOK, calculations[i])
-		}
+	var calc Calculation
+
+	if err := db.First(&calc, "id = ?", id).Error; err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]string{
+			"error": "Could not find expression",
+		})
 	}
 
-	return c.JSON(http.StatusNotFound, map[string]string{
-		"error": "Calculation not found",
-	})
+	calc.Expression = req.Expression
+	calc.Result = result
+
+	if err := db.Save(&calc).Error; err != nil {
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Could not update calculations"})
+	}
+
+	return c.JSON(http.StatusOK, calc)
 }
 
 func deleteCalculators(c echo.Context) error {
 	id := c.Param("id")
 
-	for i, calc := range calculations {
-		if calc.ID == id {
-			calculations = append(calculations[:i], calculations[i+1:]...)
-			return c.NoContent(http.StatusNoContent)
-		}
+	if err := db.Delete(&Calculation{}, "id = ?", id).Error; err != nil {
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Could not delete calculations"})
 	}
 
-	return c.JSON(http.StatusBadRequest, "Calculation not found")
+	return c.NoContent(http.StatusNoContent)
 }
 
 func main() {
+	initDB()
+
 	e := echo.New()
 
 	e.Use(middleware.CORS())
